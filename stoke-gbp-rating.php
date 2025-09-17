@@ -51,6 +51,7 @@ function stoke_gbp_get_default_options() {
         'place_id'      => '',
         'stars'         => 5,
         'star_color'    => '#E9966F',
+        'accent_color'  => '#1E2A3A',
         'cache_minutes' => 720,
     );
 }
@@ -116,6 +117,14 @@ function stoke_gbp_register_settings() {
     );
 
     add_settings_field(
+        'accent_color',
+        __( 'Text and Icon Colour', 'stoke-gbp-rating' ),
+        'stoke_gbp_render_accent_color_field',
+        'stoke_gbp_rating',
+        'stoke_gbp_rating_section'
+    );
+
+    add_settings_field(
         'cache_minutes',
         __( 'Cache Duration (minutes)', 'stoke-gbp-rating' ),
         'stoke_gbp_render_cache_field',
@@ -139,6 +148,7 @@ function stoke_gbp_sanitize_options( $input ) {
     $sanitized['place_id']      = isset( $input['place_id'] ) ? sanitize_text_field( $input['place_id'] ) : $options['place_id'];
     $sanitized['stars']         = isset( $input['stars'] ) ? absint( $input['stars'] ) : $options['stars'];
     $sanitized['star_color']    = isset( $input['star_color'] ) ? sanitize_hex_color( $input['star_color'] ) : $options['star_color'];
+    $sanitized['accent_color']  = isset( $input['accent_color'] ) ? sanitize_hex_color( $input['accent_color'] ) : $options['accent_color'];
     $sanitized['cache_minutes'] = isset( $input['cache_minutes'] ) ? absint( $input['cache_minutes'] ) : $options['cache_minutes'];
 
     if ( $sanitized['stars'] < 1 ) {
@@ -149,6 +159,10 @@ function stoke_gbp_sanitize_options( $input ) {
 
     if ( empty( $sanitized['star_color'] ) ) {
         $sanitized['star_color'] = stoke_gbp_get_default_options()['star_color'];
+    }
+
+    if ( empty( $sanitized['accent_color'] ) ) {
+        $sanitized['accent_color'] = stoke_gbp_get_default_options()['accent_color'];
     }
 
     return $sanitized;
@@ -194,6 +208,21 @@ function stoke_gbp_render_star_color_field() {
 
     echo '<input type="text" name="stoke_gbp_rating_options[star_color]" id="stoke-gbp-star-color" class="stoke-gbp-color-field" value="' . esc_attr( $color ) . '" data-default-color="' . esc_attr( stoke_gbp_get_default_options()['star_color'] ) . '" />';
     echo '<p class="description">' . esc_html__( 'Select the colour used for the filled portion of the stars.', 'stoke-gbp-rating' ) . '</p>';
+}
+
+/**
+ * Render accent colour field.
+ */
+function stoke_gbp_render_accent_color_field() {
+    $options = stoke_gbp_get_options();
+    $color   = sanitize_hex_color( $options['accent_color'] );
+
+    if ( ! $color ) {
+        $color = stoke_gbp_get_default_options()['accent_color'];
+    }
+
+    echo '<input type="text" name="stoke_gbp_rating_options[accent_color]" id="stoke-gbp-accent-color" class="stoke-gbp-color-field" value="' . esc_attr( $color ) . '" data-default-color="' . esc_attr( stoke_gbp_get_default_options()['accent_color'] ) . '" />';
+    echo '<p class="description">' . esc_html__( 'Select the colour used for the text and Google icon.', 'stoke-gbp-rating' ) . '</p>';
 }
 
 /**
@@ -377,9 +406,10 @@ function stoke_gbp_enqueue_badge_style() {
     }
 
     if ( ! $style_added ) {
-        $css = '.stoke-gbp-rating-badge{display:inline-flex;align-items:center;background-color:#1E2A3A;color:#ffffff;border-radius:9999px;padding:6px 12px;font-size:14px;line-height:1.2;font-weight:600;font-family:inherit;gap:10px;}' .
+        $css = '.stoke-gbp-rating-badge{display:inline-flex;align-items:center;color:#1E2A3A;border-radius:9999px;padding:6px 12px;font-size:14px;line-height:1.2;font-weight:600;font-family:inherit;gap:10px;}' .
             '.stoke-gbp-rating-badge .stoke-gbp-visual{display:inline-flex;align-items:center;gap:8px;}' .
             '.stoke-gbp-rating-badge .stoke-gbp-google-icon{width:22px;height:22px;flex-shrink:0;}' .
+            '.stoke-gbp-rating-badge .stoke-gbp-google-icon path{fill:currentColor;}' .
             '.stoke-gbp-rating-badge .stoke-gbp-stars{display:inline-flex;gap:2px;}' .
             '.stoke-gbp-rating-badge .stoke-gbp-star{width:16px;height:16px;display:block;}' .
             '.stoke-gbp-rating-badge .stoke-gbp-star-bg{fill:#4d5d72;}' .
@@ -441,6 +471,7 @@ function stoke_gbp_render_badge_shortcode( $atts ) {
             'api_key'       => $options['api_key'],
             'stars'         => $options['stars'],
             'star_color'    => $options['star_color'],
+            'accent_color'  => $options['accent_color'],
             'cache_minutes' => $options['cache_minutes'],
         ),
         $atts,
@@ -452,6 +483,7 @@ function stoke_gbp_render_badge_shortcode( $atts ) {
     $star_count    = absint( $atts['stars'] );
     $cache_minutes = absint( $atts['cache_minutes'] );
     $star_color    = sanitize_hex_color( $atts['star_color'] );
+    $accent_color  = sanitize_hex_color( $atts['accent_color'] );
 
     if ( $star_count < 1 ) {
         $star_count = 1;
@@ -461,6 +493,10 @@ function stoke_gbp_render_badge_shortcode( $atts ) {
 
     if ( empty( $star_color ) ) {
         $star_color = stoke_gbp_get_default_options()['star_color'];
+    }
+
+    if ( empty( $accent_color ) ) {
+        $accent_color = stoke_gbp_get_default_options()['accent_color'];
     }
 
     $data      = stoke_gbp_get_rating_data( $place_id, $api_key, $cache_minutes );
@@ -483,17 +519,19 @@ function stoke_gbp_render_badge_shortcode( $atts ) {
     stoke_gbp_enqueue_badge_style();
 
     $icon_svg = '<svg class="stoke-gbp-google-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
-        . '<path fill="#4285F4" d="M21.6 12.227c0-.74-.066-1.45-.19-2.14H12v4.05h5.44a4.65 4.65 0 0 1-2.02 3.05v2.53h3.27c1.92-1.77 3-4.38 3-7.49z" />'
-        . '<path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.43l-3.27-2.53c-.91.61-2.07.97-3.35.97-2.58 0-4.77-1.74-5.55-4.07H2.97v2.56A9.99 9.99 0 0 0 12 22z" />'
-        . '<path fill="#FBBC05" d="M6.45 13.94a6.004 6.004 0 0 1 0-3.88V7.5H2.97a10 10 0 0 0 0 8.99l3.48-2.55z" />'
-        . '<path fill="#EA4335" d="M12 6.38c1.47 0 2.79.5 3.83 1.47l2.86-2.86C16.96 2.92 14.7 2 12 2a9.99 9.99 0 0 0-9.03 5.5l3.48 2.56C7.23 8.12 9.42 6.38 12 6.38z" />'
+        . '<path fill="currentColor" d="M21.6 12.227c0-.74-.066-1.45-.19-2.14H12v4.05h5.44a4.65 4.65 0 0 1-2.02 3.05v2.53h3.27c1.92-1.77 3-4.38 3-7.49z" />'
+        . '<path fill="currentColor" d="M12 22c2.7 0 4.96-.9 6.62-2.43l-3.27-2.53c-.91.61-2.07.97-3.35.97-2.58 0-4.77-1.74-5.55-4.07H2.97v2.56A9.99 9.99 0 0 0 12 22z" />'
+        . '<path fill="currentColor" d="M6.45 13.94a6.004 6.004 0 0 1 0-3.88V7.5H2.97a10 10 0 0 0 0 8.99l3.48-2.55z" />'
+        . '<path fill="currentColor" d="M12 6.38c1.47 0 2.79.5 3.83 1.47l2.86-2.86C16.96 2.92 14.7 2 12 2a9.99 9.99 0 0 0-9.03 5.5l3.48 2.56C7.23 8.12 9.42 6.38 12 6.38z" />'
         . '</svg>';
 
     $text_markup = $has_error
         ? '<span class="stoke-gbp-text">' . esc_html__( 'Reviews unavailable', 'stoke-gbp-rating' ) . '</span>'
         : '<span class="stoke-gbp-text"><strong>' . esc_html( number_format_i18n( round( $rating_value, 1 ), 1 ) ) . '</strong> ' . esc_html__( 'Stars out of', 'stoke-gbp-rating' ) . ' ' . esc_html( number_format_i18n( $total ) ) . ' ' . esc_html__( 'Reviews!', 'stoke-gbp-rating' ) . '</span>';
 
-    $badge  = '<div class="stoke-gbp-rating-badge" role="img" aria-label="' . esc_attr( $aria_label ) . '">';
+    $style_attr = ' style="color:' . esc_attr( $accent_color ) . ';"';
+
+    $badge  = '<div class="stoke-gbp-rating-badge"' . $style_attr . ' role="img" aria-label="' . esc_attr( $aria_label ) . '">';
     $badge .= '<span class="stoke-gbp-visual" aria-hidden="true">';
     $badge .= '<span class="stoke-gbp-icon-wrap">' . $icon_svg . '</span>';
     $badge .= '<span class="stoke-gbp-stars">' . $stars_markup . '</span>';
